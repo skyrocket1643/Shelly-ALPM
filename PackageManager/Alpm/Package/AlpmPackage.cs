@@ -166,6 +166,33 @@ public class AlpmPackage(IntPtr pkgPtr)
         }
     }
 
+    public List<string> RequiredBy
+    {
+        get
+        {
+            var requiredBy = new List<string>();
+            IntPtr currentPtr = AlpmReference.PkgComputeRequiredBy(PackagePtr);
+
+            while (currentPtr != IntPtr.Zero)
+            {
+                var node = Marshal.PtrToStructure<AlpmList>(currentPtr);
+                if (node.Data != IntPtr.Zero)
+                {
+                    // These are simple package name strings
+                    var pkgName = Marshal.PtrToStringUTF8(node.Data);
+                    if (!string.IsNullOrEmpty(pkgName))
+                    {
+                        requiredBy.Add(pkgName);
+                    }
+                }
+
+                currentPtr = node.Next;
+            }
+
+            return requiredBy;
+        }
+    }
+
     public static List<AlpmPackage> FromList(IntPtr listPtr)
     {
         var packages = new List<AlpmPackage>();
@@ -186,7 +213,6 @@ public class AlpmPackage(IntPtr pkgPtr)
 
     public AlpmPackageDto ToDto() => new()
     {
-        //Todo: implement optionalfor and requiredby
         Name = Name,
         Version = Version,
         Size = Size,
@@ -205,6 +231,8 @@ public class AlpmPackage(IntPtr pkgPtr)
         Licenses = Licenses,
         OptDepends = OptDepends,
         Provides = Provides,
+        RequiredBy = RequiredBy,
+        OptionalFor = OptionalFor,
         PackageFile = Repository == "local" ? Files : null,
     };
 
