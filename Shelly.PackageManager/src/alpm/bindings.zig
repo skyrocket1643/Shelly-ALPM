@@ -294,6 +294,11 @@ pub const libalpm = struct {
             return str(alpm.alpm_db_get_name(db));
         }
 
+        pub fn database(self: Package) ?Database {
+            const db = alpm.alpm_pkg_get_db(self.ptr) orelse return null;
+            return .{ .ptr = db };
+        }
+
         pub fn replaces(self: Package) ListIterator(Dependency, Dependency.from) {
             return .{ .node = alpm.alpm_pkg_get_replaces(self.ptr) };
         }
@@ -322,10 +327,12 @@ pub const libalpm = struct {
             return .{ .node = alpm.alpm_pkg_get_conflicts(self.ptr) };
         }
 
-        pub fn install_reason(self: Package) ?[:0]const u8 {
-            const db = alpm.alpm_pkg_get_db(self.ptr);
-            if (db == null) return @as([:0]const u8, "Not Installed");
-            return str(alpm.alpm_pkg_get_reason(self.ptr));
+        pub fn install_reason(self: Package) PackageReason {
+            return switch (alpm.alpm_pkg_get_reason(self.ptr)) {
+                alpm.ALPM_PKG_REASON_EXPLICIT => .Explicit,
+                alpm.ALPM_PKG_REASON_DEPEND => .Dependency,
+                else => .Unknown,
+            };
         }
 
         pub fn build_date(self: Package) ?time.Time {
@@ -338,16 +345,20 @@ pub const libalpm = struct {
             return time.Time.fromUnix(date.?);
         }
 
-        pub fn optional_for(self: Package) ListIterator(Dependency, Dependency.from) {
+        pub fn optional_for(self: Package) ListIterator([:0]const u8, asStr) {
             return .{ .node = alpm.alpm_pkg_compute_optionalfor(self.ptr) };
         }
 
-        pub fn required_by(self: Package) ListIterator(Dependency, Dependency.from) {
+        pub fn required_by(self: Package) ListIterator([:0]const u8, asStr) {
             return .{ .node = alpm.alpm_pkg_compute_requiredby(self.ptr) };
         }
 
         pub fn files(self: Package) AlpmFileList {
             return AlpmFileList{ .ptr = alpm.alpm_pkg_get_files(self.ptr) };
+        }
+
+        pub fn file_name(self: Package) [:0]const u8 {
+            return alpm.alpm_pkg_get_filename(self.ptr);
         }
 
         pub fn base(self: Package) [:0]const u8 {
@@ -747,6 +758,8 @@ pub const libalpm = struct {
 
         // Custom events
         failed_optional_dependency_operation = 200,
+        package_explicit = 201,
+        failed_add_local_package = 202,
 
         pub fn from_libalpm(c_type: c_int) EventType {
             return @enumFromInt(@as(u32, @intCast(c_type)));

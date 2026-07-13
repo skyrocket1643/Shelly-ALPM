@@ -17,6 +17,7 @@ pub const DownloadError = error{
     RetryExceeded,
     SslError,
     NotModified,
+    FailedDownload,
 };
 
 pub const SkippedReason = enum {
